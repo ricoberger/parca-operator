@@ -1,0 +1,45 @@
+name: Helm
+
+on:
+  push:
+    paths:
+      - 'charts/parca-operator/**'
+
+jobs:
+  build-release:
+    name: Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint
+        run: |
+          helm lint charts/parca-operator
+
+      - name: Template
+        run: |
+          helm template parca-operator -n parca-operator charts/parca-operator
+
+      - name: Configure git
+        run: git config --global user.email "mail@ricoberger.de" && git config --global user.name "ricoberger"
+
+      - name: Package Helm Chart
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: helm package charts/parca-operator
+
+      - name: Clone Helm Repository
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: git clone https://github.com/ricoberger/helm-charts.git
+
+      - name: Update Helm Repository
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: mv parca-operator* helm-charts/ && helm repo index helm-charts/ --url https://ricoberger.github.io/helm-charts/
+
+      - name: Commit Changes
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: cd helm-charts/ && git add . && git commit -m "Add new release for Parca Operator"
+
+      - name: Push Changes
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: cd helm-charts/ && git push https://ricoberger:${{ secrets.TOKEN }}@github.com/ricoberger/helm-charts.git

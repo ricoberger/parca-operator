@@ -1,0 +1,6 @@
+You can find more information about running the Parca Operator on Kubernetes
+in the GitHub repository:
+
+  https://github.com/ricoberger/parca-operator
+
+Thanks for using the Parca Operator!
