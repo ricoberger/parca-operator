@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "parca-operator.fullname" . }}
+  labels:
+    {{- include "parca-operator.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http-metrics
+      protocol: TCP
+      name: http-metrics
+    - port: 8081
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "parca-operator.selectorLabels" . | nindent 4 }}

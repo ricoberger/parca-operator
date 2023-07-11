@@ -1,0 +1,37 @@
+name: Continuous Integration
+
+on: pull_request
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          args: --config=./.github/golangci.yaml
+          skip-cache: true
+
+      - name: Test
+        run: |
+          make test
+
+      - name: Build
+        run: |
+          make build
