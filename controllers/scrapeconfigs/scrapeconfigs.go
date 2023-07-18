@@ -134,6 +134,7 @@ func SetScrapeConfig(scrapeConfig parcav1alpha1.ParcaScrapeConfig, pods []corev1
 				"namespace": scrapeConfig.Namespace,
 				"pod":       pod.Name,
 				"container": container,
+				"node":      pod.Spec.NodeName,
 			},
 		})
 
