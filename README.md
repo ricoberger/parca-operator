@@ -24,9 +24,10 @@ helm upgrade --install parca-operator ricoberger/parca-operator
 
 Make sure that you set the following environment variables for the Parca Operator:
 
-- `PARCA_OPERATOR_CONFIG`: The path to the configration file for Parca. This file is used as base for the generated Parca configration and should contain you `object_storage` configuration.
-- `PARCA_OPERATOR_CONFIG_NAME`: The name of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
-- `PARCA_OPERATOR_CONFIG_NAMESPACE`: The namespace of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
+- `PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL`: The reconciliation interval for the `ParcaScrapeConfig` controller. If this value is not set the `ParcaScrapeConfig` CRs will be reconciled every 5 minutes. This must be a value which can be parsed via the [`ParseDuration`](https://pkg.go.dev/time#ParseDuration) function.
+- `PARCA_SCRAPECONFIG_BASE_CONFIG`: The path to the configration file for Parca. This file is used as base for the generated Parca configration and should contain you `object_storage` configuration.
+- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME`: The name of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
+- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE`: The namespace of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
 
 ## API Reference
 

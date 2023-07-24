@@ -112,11 +112,13 @@ env:
   ## The following environment variables are required for the Parca Operator to read the base configration and to create
   ## the final configration for Parca:
   ##
-  - name: PARCA_OPERATOR_CONFIG
+  - name: PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL
+    value: 5m
+  - name: PARCA_SCRAPECONFIG_BASE_CONFIG
     value: /etc/parca/parca.yaml
-  - name: PARCA_OPERATOR_CONFIG_NAME
+  - name: PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME
     value: parca-generated
-  - name: PARCA_OPERATOR_CONFIG_NAMESPACE
+  - name: PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE
     value: parca
 
 ## Specify additional labels and annotations for the created Pods.
