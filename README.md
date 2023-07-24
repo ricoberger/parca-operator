@@ -114,9 +114,10 @@ This Makefile target will invoke controller-gen to generate the CRD manifests at
 Deploy the CRD and run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`:
 
 ```sh
-export PARCA_OPERATOR_CONFIG=parca.yaml
-export PARCA_OPERATOR_CONFIG_NAME=parca-generated
-export PARCA_OPERATOR_CONFIG_NAMESPACE=parca
+export PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL=1m
+export PARCA_SCRAPECONFIG_BASE_CONFIG=parca.yaml
+export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME=parca-generated
+export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE=parca
 
 make run
 ```
