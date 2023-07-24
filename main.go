@@ -6,7 +6,7 @@ import (
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
 	"github.com/ricoberger/parca-operator/controllers"
-	"github.com/ricoberger/parca-operator/controllers/scrapeconfigs"
+	"github.com/ricoberger/parca-operator/controllers/parcascrapeconfig"
 
 	//+kubebuilder:scaffold:imports
 
@@ -47,7 +47,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	err := scrapeconfigs.Init()
+	err := parcascrapeconfig.Init()
 	if err != nil {
 		setupLog.Error(err, "Failed to initialize Parca configuration.")
 		os.Exit(1)

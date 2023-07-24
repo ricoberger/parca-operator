@@ -1,4 +1,4 @@
-package scrapeconfigs
+package parcascrapeconfig
 
 import (
 	"context"
