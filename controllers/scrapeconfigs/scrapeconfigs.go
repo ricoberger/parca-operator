@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
 
@@ -31,13 +32,29 @@ type ParcaObjectStorage struct {
 	} `json:"bucket,omitempty"`
 }
 
-var baseConfig ParcaConfig
-var finalConfig ParcaConfig
+var (
+	reconciliationInterval time.Duration
+	baseConfig             ParcaConfig
+	finalConfig            ParcaConfig
+)
 
-// Init reads the base configuration for Parca and the final configuration. It then merges the base configuration with
-// the final configuration and applies the final configuration.
+// Init is responsible to initialise the scrapeconfigs package. For that it reads all environment variables starting
+// with "PARCA_SCRAPECONFIG_" and uses them to configure the package.
 func Init() error {
-	baseConfigContent, err := os.ReadFile(os.Getenv("PARCA_OPERATOR_CONFIG"))
+	// Read the "PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL" environment variable if set. If not set the default value
+	// of 5 minutes is used for the reconciliation interval. If the value is seet and can be parsed as a time.Duration
+	// the parsed value is used.
+	reconciliationInterval = 5 * time.Minute
+	if os.Getenv("PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL") != "" {
+		if parsedReconciliationInterval, err := time.ParseDuration(os.Getenv("PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL")); err == nil {
+			reconciliationInterval = parsedReconciliationInterval
+		}
+	}
+
+	// Read the "PARCA_SCRAPECONFIG_BASE_CONFIG" environment variable. This variable must point to a file which contains
+	// the base configuration for Parca. After the file was read we expand all environment variables in the file. Then
+	// we unmarshal the YAML content into the "baseConfig" variable.
+	baseConfigContent, err := os.ReadFile(os.Getenv("PARCA_SCRAPECONFIG_BASE_CONFIG"))
 	if err != nil {
 		return err
 	}
@@ -47,25 +64,30 @@ func Init() error {
 		return err
 	}
 
-	cfg, err := config.GetConfig()
+	// Create a new Kubernetes client "c" which is used to interact with the Kubernetes API. This is needed because, we
+	// might have an existing final configuration which we need to update.
+	restConfig, err := config.GetConfig()
 	if err != nil {
 		return err
 	}
 
-	c, err := client.New(cfg, client.Options{})
+	c, err := client.New(restConfig, client.Options{})
 	if err != nil {
 		return err
 	}
 
+	// Read the existing final configuration from the Kubernetes API. If there is no existing final configuration we use
+	// the base configuration as the final configuration and create a new Kubernetes Secret with the content of the base
+	// configuration.
 	existingConfigSecret := &corev1.Secret{}
-	err = c.Get(context.Background(), types.NamespacedName{Name: os.Getenv("PARCA_OPERATOR_CONFIG_NAME"), Namespace: os.Getenv("PARCA_OPERATOR_CONFIG_NAMESPACE")}, existingConfigSecret)
+	err = c.Get(context.Background(), types.NamespacedName{Name: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"), Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE")}, existingConfigSecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			finalConfig = baseConfig
 			err := c.Create(context.Background(), &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      os.Getenv("PARCA_OPERATOR_CONFIG_NAME"),
-					Namespace: os.Getenv("PARCA_OPERATOR_CONFIG_NAMESPACE"),
+					Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
+					Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
 				},
 				Data: map[string][]byte{
 					"parca.yaml": baseConfigContent,
@@ -75,11 +97,14 @@ func Init() error {
 				return err
 			}
 			return nil
-		} else {
-			return err
 		}
+
+		return err
 	}
 
+	// If there is an existing final configuration we unmarshal the content of the "parca.yaml" key into the
+	// "finalConfig" variable. Then we apply all changes from the base configuration to the final configuration and
+	// update the existing Kubernetes Secret with the new content.
 	if err := yaml.Unmarshal(existingConfigSecret.Data["parca.yaml"], &finalConfig); err != nil {
 		return err
 	}
@@ -95,8 +120,8 @@ func Init() error {
 
 	err = c.Update(context.Background(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      os.Getenv("PARCA_OPERATOR_CONFIG_NAME"),
-			Namespace: os.Getenv("PARCA_OPERATOR_CONFIG_NAMESPACE"),
+			Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
+			Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
 		},
 		Data: map[string][]byte{
 			"parca.yaml": finalbaseConfigContent,
@@ -191,4 +216,9 @@ func DeleteScrapeConfig(scrapeConfig parcav1alpha1.ParcaScrapeConfig) error {
 // GetConfig returns the current configuration as a YAML byte array.
 func GetConfig() ([]byte, error) {
 	return yaml.Marshal(finalConfig)
+}
+
+// GetReconciliationInterval returns the configured reconciliation interval.
+func GetReconciliationInterval() time.Duration {
+	return reconciliationInterval
 }
