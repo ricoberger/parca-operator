@@ -152,18 +152,26 @@ func SetScrapeConfig(scrapeConfig parcav1alpha1.ParcaScrapeConfig, pods []corev1
 	container := getContainerName(scrapeConfig.Spec.Port, pods)
 
 	for _, pod := range pods {
-		scrapeConfig.Spec.ScrapeConfig.StaticConfigs = append(scrapeConfig.Spec.ScrapeConfig.StaticConfigs, parcav1alpha1.StaticConfig{
-			Targets: []string{fmt.Sprintf("%s:%d", pod.Status.PodIP, scrapeConfig.Spec.Port)},
-			Labels: map[string]string{
-				"name":      scrapeConfig.Name,
-				"namespace": scrapeConfig.Namespace,
-				"pod":       pod.Name,
-				"container": container,
-				"node":      pod.Spec.NodeName,
-			},
-		})
+		if pod.Status.PodIP != "" {
+			scrapeConfig.Spec.ScrapeConfig.StaticConfigs = append(scrapeConfig.Spec.ScrapeConfig.StaticConfigs, parcav1alpha1.StaticConfig{
+				Targets: []string{fmt.Sprintf("%s:%d", pod.Status.PodIP, scrapeConfig.Spec.Port)},
+				Labels: map[string]string{
+					"name":      scrapeConfig.Name,
+					"namespace": scrapeConfig.Namespace,
+					"pod":       pod.Name,
+					"container": container,
+					"node":      pod.Spec.NodeName,
+				},
+			})
 
-		podIPs = append(podIPs, fmt.Sprintf("%s:%d", pod.Status.PodIP, scrapeConfig.Spec.Port))
+			podIPs = append(podIPs, fmt.Sprintf("%s:%d", pod.Status.PodIP, scrapeConfig.Spec.Port))
+		}
+	}
+
+	// When there are not Pod IPs or the Pod IPs are equal to the existing Pod IPs saved in the status of the CR we can
+	// return nil and don't need to update the final configuration.
+	if len(podIPs) == 0 || testPodIPsEq(podIPs, scrapeConfig.Status.PodIPs) {
+		return nil, nil
 	}
 
 	for i := 0; i < len(finalConfig.ScrapeConfigs); i++ {
@@ -190,6 +198,23 @@ func getContainerName(port int32, pods []corev1.Pod) string {
 	}
 
 	return "unknown"
+}
+
+// testPodIPsEq tests if the provided slices of Pod IPs are equal. We can simply check the length of the slices and
+// then iterate over the slices and compare the values, because the Kubernetes API will return the Pods always in the
+// same order.
+func testPodIPsEq(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // DeleteScrapeConfig deletes the scrape configuration for the provided ParcaScrapeConfig.

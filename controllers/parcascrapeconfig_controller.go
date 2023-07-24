@@ -142,6 +142,14 @@ func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
 	}
 
+	// If the SetScrapeConfig function returns nil, we don't need to update the Parca configuration secret, because no
+	// Pods with an IP where found or the Pods where not changed since the last reconciliation loop.
+	if podIPs == nil {
+		reqLogger.Info("ParcaScrapeConfig must not be updated.")
+		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdated, "Parca Configuration must not be updated", metav1.ConditionTrue, parcaScrapeConfig.Status.PodIPs)
+		return ctrl.Result{RequeueAfter: reconciliationInterval}, nil
+	}
+
 	// When the Parca configuration was updated, we can update the Parca configuration secret to include the new scrape
 	// configuration.
 	finalConfig, err := parcascrapeconfig.GetConfig()
