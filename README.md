@@ -109,7 +109,7 @@ updated with the following command:
 make manifests
 ```
 
-This Makefile target will invoke controller-gen to generate the CRD manifests at `config/crd/bases/ricoberger.de_vaultsecrets.yaml`.
+This Makefile target will invoke controller-gen to generate the CRD manifests at `charts/parca-operator/crds/parca.ricoberger.de_<CRD>.yaml`.
 
 Deploy the CRD and run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`:
 
