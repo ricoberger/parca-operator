@@ -6,7 +6,7 @@ import (
 	"time"
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
-	"github.com/ricoberger/parca-operator/controllers/scrapeconfigs"
+	"github.com/ricoberger/parca-operator/controllers/parcascrapeconfig"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +50,7 @@ type ParcaScrapeConfigReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
-	reconciliationInterval := scrapeconfigs.GetReconciliationInterval()
+	reconciliationInterval := parcascrapeconfig.GetReconciliationInterval()
 
 	parcaScrapeConfig := &parcav1alpha1.ParcaScrapeConfig{}
 	err := r.Get(ctx, req.NamespacedName, parcaScrapeConfig)
@@ -73,14 +73,14 @@ func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		if controllerutil.ContainsFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer) {
 			// Remove the ParcaScrapeConfig from the Parca configuration and update the Parca configuration secret. So
 			// that it doesn't contain the ParcaScrapeConfig anymore.
-			err := scrapeconfigs.DeleteScrapeConfig(*parcaScrapeConfig)
+			err := parcascrapeconfig.DeleteScrapeConfig(*parcaScrapeConfig)
 			if err != nil {
 				reqLogger.Error(err, "Failed to delete ParcaScrapeConfig.")
 				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigDeleteFailed, err.Error(), metav1.ConditionFalse, nil)
 				return ctrl.Result{RequeueAfter: reconciliationInterval}, err
 			}
 
-			finalConfig, err := scrapeconfigs.GetConfig()
+			finalConfig, err := parcascrapeconfig.GetConfig()
 			if err != nil {
 				reqLogger.Error(err, "Failed to get Parca configuration.")
 				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
@@ -135,7 +135,7 @@ func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
 	}
 
-	podIPs, err := scrapeconfigs.SetScrapeConfig(*parcaScrapeConfig, pods.Items)
+	podIPs, err := parcascrapeconfig.SetScrapeConfig(*parcaScrapeConfig, pods.Items)
 	if err != nil {
 		reqLogger.Error(err, "Failed to update internal Parca configuration.")
 		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
@@ -144,7 +144,7 @@ func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// When the Parca configuration was updated, we can update the Parca configuration secret to include the new scrape
 	// configuration.
-	finalConfig, err := scrapeconfigs.GetConfig()
+	finalConfig, err := parcascrapeconfig.GetConfig()
 	if err != nil {
 		reqLogger.Error(err, "Failed to get Parca configuration.")
 		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
