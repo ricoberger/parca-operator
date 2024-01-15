@@ -68,8 +68,8 @@ func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// When the ParcaScrapeConfig is marked for deletion, we remove it from the Parca configuration, before we remove
 	// the finalizer and delete the object.
-	isMemcachedMarkedToBeDeleted := parcaScrapeConfig.GetDeletionTimestamp() != nil
-	if isMemcachedMarkedToBeDeleted {
+	isMarkedToBeDeleted := parcaScrapeConfig.GetDeletionTimestamp() != nil
+	if isMarkedToBeDeleted {
 		if controllerutil.ContainsFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer) {
 			// Remove the ParcaScrapeConfig from the Parca configuration and update the Parca configuration secret. So
 			// that it doesn't contain the ParcaScrapeConfig anymore.
