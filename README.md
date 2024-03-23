@@ -84,8 +84,8 @@ spec:
       app: parca-server
   port: 7070
   scrapeConfig:
-    scrape_interval: 60s
-    scrape_timeout: 45s
+    scrape_interval: 45s
+    scrape_timeout: 60s
 ```
 
 </details>
