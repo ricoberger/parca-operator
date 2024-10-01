@@ -1,4 +1,4 @@
-FROM golang:1.23.0 as builder
+FROM golang:1.23.1 as builder
 WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -8,7 +8,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 RUN CGO_ENABLED=0 go build -a -o manager main.go
 
-FROM alpine:3.20.2
+FROM alpine:3.20.3
 RUN apk update && apk add --no-cache ca-certificates
 WORKDIR /
 COPY --from=builder /workspace/manager .
