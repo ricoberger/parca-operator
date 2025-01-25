@@ -16,10 +16,7 @@ the Parca Operator can also be used to configure the
 The Parca Operator can be installed via Helm:
 
 ```sh
-helm repo add ricoberger https://ricoberger.github.io/helm-charts
-helm repo update
-
-helm upgrade --install parca-operator ricoberger/parca-operator
+helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-operator --version 1.0.0
 ```
 
 Make sure that you set the following environment variables for the Parca Operator:
