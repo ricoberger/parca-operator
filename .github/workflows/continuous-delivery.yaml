@@ -1,3 +1,4 @@
+---
 name: Continuous Delivery
 
 on:
@@ -53,3 +54,33 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64/v8
           tags: ghcr.io/${{ github.repository_owner }}/parca-operator:${{ env.TAG }}
+
+  helm:
+    name: Helm
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Version
+        id: version
+        run: |
+          echo VERSION=$(yq -r .version ./charts/parca-operator/Chart.yaml) >> $GITHUB_ENV
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+
+      - name: Package and Push Helm Chart
+        run: |
+          helm package ./charts/parca-operator --version ${{ env.VERSION }}
+          helm push ./parca-operator-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
