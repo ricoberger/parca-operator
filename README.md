@@ -1,15 +1,19 @@
 # Parca Operator
 
-The Parca Operator can be used to deploy and operator [Parca](https://www.parca.dev). It can be used to deploy the
-[Parca Server](https://www.parca.dev/docs/parca) and [Parca Agent](https://www.parca.dev/docs/parca-agent). Besides that
-the Parca Operator can also be used to configure the
-[pull-based ingestion](https://www.parca.dev/docs/ingestion#pull-based) via Custom Resource Definitions.
+The Parca Operator can be used to deploy and operator
+[Parca](https://www.parca.dev). It can be used to deploy the
+[Parca Server](https://www.parca.dev/docs/parca) and
+[Parca Agent](https://www.parca.dev/docs/parca-agent). Besides that the Parca
+Operator can also be used to configure the
+[pull-based ingestion](https://www.parca.dev/docs/ingestion#pull-based) via
+Custom Resource Definitions.
 
-> **Note:** The Parca Operator is work in progress. While I plan to add support for the deployment of the Parca Server
-> and Parca Agent, these features are not implemented yet.
+> **Note:** The Parca Operator is work in progress. While I plan to add support
+> for the deployment of the Parca Server and Parca Agent, these features are not
+> implemented yet.
 >
-> This means, that the Parca Operator can currently only be used to configure the pull-based ingestion via the
-> ParcaScrapeConfig Custom Resource Definition.
+> This means, that the Parca Operator can currently only be used to configure
+> the pull-based ingestion via the ParcaScrapeConfig Custom Resource Definition.
 
 ## Installation
 
@@ -19,12 +23,23 @@ The Parca Operator can be installed via Helm:
 helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-operator --version 1.0.0
 ```
 
-Make sure that you set the following environment variables for the Parca Operator:
+Make sure that you set the following environment variables for the Parca
+Operator:
 
-- `PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL`: The reconciliation interval for the `ParcaScrapeConfig` controller. If this value is not set the `ParcaScrapeConfig` CRs will be reconciled every 5 minutes. This must be a value which can be parsed via the [`ParseDuration`](https://pkg.go.dev/time#ParseDuration) function.
-- `PARCA_SCRAPECONFIG_BASE_CONFIG`: The path to the configration file for Parca. This file is used as base for the generated Parca configration and should contain you `object_storage` configuration.
-- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME`: The name of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
-- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE`: The namespace of secret which should be generated. The secret contains a `parca.yaml` key with the generated configuration for Parca.
+- `PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL`: The reconciliation interval for
+  the `ParcaScrapeConfig` controller. If this value is not set the
+  `ParcaScrapeConfig` CRs will be reconciled every 5 minutes. This must be a
+  value which can be parsed via the
+  [`ParseDuration`](https://pkg.go.dev/time#ParseDuration) function.
+- `PARCA_SCRAPECONFIG_BASE_CONFIG`: The path to the configration file for Parca.
+  This file is used as base for the generated Parca configration and should
+  contain you `object_storage` configuration.
+- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME`: The name of secret which should be
+  generated. The secret contains a `parca.yaml` key with the generated
+  configuration for Parca.
+- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE`: The namespace of secret which
+  should be generated. The secret contains a `parca.yaml` key with the generated
+  configuration for Parca.
 
 ## API Reference
 
@@ -89,26 +104,31 @@ spec:
 
 ## Development
 
-After modifying the `*_types.go` file always run the following command to update the generated code for that resource type:
+After modifying the `*_types.go` file always run the following command to update
+the generated code for that resource type:
 
 ```sh
 make generate
 ```
 
-The above Makefile target will invoke the [controller-gen](https://sigs.k8s.io/controller-tools) utility to update the
-`api/v1alpha1/zz_generated.deepcopy.go` file to ensure our API's Go type definitons implement the `runtime.Object`
-interface that all Kind types must implement.
+The above Makefile target will invoke the
+[controller-gen](https://sigs.k8s.io/controller-tools) utility to update the
+`api/v1alpha1/zz_generated.deepcopy.go` file to ensure our API's Go type
+definitons implement the `runtime.Object` interface that all Kind types must
+implement.
 
-Once the API is defined with spec/status fields and CRD validation markers, the CRD manifests can be generated and
-updated with the following command:
+Once the API is defined with spec/status fields and CRD validation markers, the
+CRD manifests can be generated and updated with the following command:
 
 ```sh
 make manifests
 ```
 
-This Makefile target will invoke controller-gen to generate the CRD manifests at `charts/parca-operator/crds/parca.ricoberger.de_<CRD>.yaml`.
+This Makefile target will invoke controller-gen to generate the CRD manifests at
+`charts/parca-operator/crds/parca.ricoberger.de_<CRD>.yaml`.
 
-Deploy the CRD and run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`:
+Deploy the CRD and run the operator locally with the default Kubernetes config
+file present at `$HOME/.kube/config`:
 
 ```sh
 export PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL=1m
