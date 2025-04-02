@@ -138,7 +138,7 @@ func Init() error {
 // `${var}` or `$var`. If the string should contain a `$` it can be escaped via `$$`.
 func expandEnv(s string) string {
 	os.Setenv("CRANE_DOLLAR", "$")
-	return os.ExpandEnv(strings.Replace(s, "$$", "${CRANE_DOLLAR}", -1))
+	return os.ExpandEnv(strings.ReplaceAll(s, "$$", "${CRANE_DOLLAR}"))
 }
 
 // SetScrapeConfig adds or updates a scrape configuration for the provided ParcaScrapeConfig. It returns a list of
