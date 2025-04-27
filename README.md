@@ -20,7 +20,7 @@ Custom Resource Definitions.
 The Parca Operator can be installed via Helm:
 
 ```sh
-helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-operator --version 1.0.0
+helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-operator --version <VERSION>
 ```
 
 Make sure that you set the following environment variables for the Parca
