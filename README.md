@@ -8,8 +8,9 @@ Operator can also be used to configure the
 [pull-based ingestion](https://www.parca.dev/docs/ingestion#pull-based) via
 Custom Resource Definitions.
 
-> **Note:** The Parca Operator is work in progress. While I plan to add support
-> for the deployment of the Parca Server and Parca Agent, these features are not
+> [!NOTE]
+> The Parca Operator is work in progress. While I plan to add support for the
+> deployment of the Parca Server and Parca Agent, these features are not
 > implemented yet.
 >
 > This means, that the Parca Operator can currently only be used to configure
