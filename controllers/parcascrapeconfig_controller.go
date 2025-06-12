@@ -2,13 +2,11 @@ package controllers
 
 import (
 	"context"
-	"os"
 	"time"
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
-	"github.com/ricoberger/parca-operator/controllers/parcascrapeconfig"
+	"github.com/ricoberger/parca-operator/controllers/parcaconfig"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,155 +41,88 @@ type ParcaScrapeConfigReconciler struct {
 //+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to move the current state of the cluster
-// closer to the desired state.
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *ParcaScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
-	reconciliationInterval := parcascrapeconfig.GetReconciliationInterval()
 
 	parcaScrapeConfig := &parcav1alpha1.ParcaScrapeConfig{}
 	err := r.Get(ctx, req.NamespacedName, parcaScrapeConfig)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request. Owned objects are
-			// automatically garbage collected. For additional cleanup logic use finalizers. Return and don't requeue.
+			// Request object not found, could have been deleted after reconcile
+			// request. Owned objects are automatically garbage collected. For
+			// additional cleanup logic use finalizers. Return and don't
+			// requeue.
 			reqLogger.Info("ParcaScrapeConfig resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
 		reqLogger.Error(err, "Failed to get ParcaScrapeConfig.")
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
+		return ctrl.Result{}, err
 	}
 
-	// When the ParcaScrapeConfig is marked for deletion, we remove it from the Parca configuration, before we remove
-	// the finalizer and delete the object.
+	// When the ParcaScrapeConfig is marked for deletion, we remove it from the
+	// Parca configuration, before we remove the finalizer and delete the
+	// object.
 	isMarkedToBeDeleted := parcaScrapeConfig.GetDeletionTimestamp() != nil
 	if isMarkedToBeDeleted {
 		if controllerutil.ContainsFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer) {
-			// Remove the ParcaScrapeConfig from the Parca configuration and update the Parca configuration secret. So
-			// that it doesn't contain the ParcaScrapeConfig anymore.
-			err := parcascrapeconfig.DeleteScrapeConfig(*parcaScrapeConfig)
+			// Remove the ParcaScrapeConfig from the Parca configuration and
+			// update the Parca configuration secret. So that it doesn't contain
+			// the ParcaScrapeConfig anymore.
+			err := parcaconfig.DeleteScrapeConfig(ctx, *parcaScrapeConfig)
 			if err != nil {
 				reqLogger.Error(err, "Failed to delete ParcaScrapeConfig.")
-				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigDeleteFailed, err.Error(), metav1.ConditionFalse, nil)
-				return ctrl.Result{RequeueAfter: reconciliationInterval}, err
+				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigDeleteFailed, err.Error(), metav1.ConditionFalse)
+				return ctrl.Result{}, err
 			}
 
-			finalConfig, err := parcascrapeconfig.GetConfig()
-			if err != nil {
-				reqLogger.Error(err, "Failed to get Parca configuration.")
-				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-				return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-			}
-
-			err = r.Update(ctx, &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-					Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
-				},
-				Data: map[string][]byte{
-					"parca.yaml": finalConfig,
-				},
-			})
-			if err != nil {
-				reqLogger.Error(err, "Failed to update Parca configuration.")
-				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-				return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-			}
-
-			// Remove the parcaScrapeConfigFinalizer. Once the finalizer is removed the object will be deleted.
+			// Remove the parcaScrapeConfigFinalizer. Once the finalizer is
+			// removed the object will be deleted.
 			controllerutil.RemoveFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer)
 			err = r.Update(ctx, parcaScrapeConfig)
 			if err != nil {
 				reqLogger.Error(err, "Failed to remove finalizer.")
-				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigDeleteFailed, err.Error(), metav1.ConditionFalse, nil)
-				return ctrl.Result{RequeueAfter: reconciliationInterval}, err
+				r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigDeleteFailed, err.Error(), metav1.ConditionFalse)
+				return ctrl.Result{}, err
 			}
 		}
 
 		return ctrl.Result{}, nil
 	}
 
-	// Get all Pods for the ParcaScrapeConfig based on the specified selector. The Pods are then used to generate the
-	// Parca configuration via the SetScrapeConfig function.
-	labelSelector, err := metav1.LabelSelectorAsSelector(&parcaScrapeConfig.Spec.Selector)
+	// Update the Parca configuration with the scrape configuration from the
+	// ParcaScrapeConfig.
+	err = parcaconfig.UpdateScrapeConfig(ctx, parcaScrapeConfig)
 	if err != nil {
-		reqLogger.Error(err, "Failed to build labelSelector for ParcaScrapeConfig.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
+		reqLogger.Error(err, "Failed to update ParcaScrapeConfig.")
+		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse)
+		return ctrl.Result{}, err
 	}
 
-	pods := &corev1.PodList{}
-	err = r.List(ctx, pods, &client.ListOptions{
-		Namespace:     parcaScrapeConfig.Namespace,
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		reqLogger.Error(err, "Failed to get Pods for ParcaScrapeConfig.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-	}
-
-	podIPs, err := parcascrapeconfig.SetScrapeConfig(*parcaScrapeConfig, pods.Items)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update internal Parca configuration.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-	}
-
-	// If the SetScrapeConfig function returns nil, we don't need to update the Parca configuration secret, because no
-	// Pods with an IP where found or the Pods where not changed since the last reconciliation loop.
-	if podIPs == nil {
-		reqLogger.Info("ParcaScrapeConfig must not be updated.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdated, "Parca Configuration must not be updated", metav1.ConditionTrue, parcaScrapeConfig.Status.PodIPs)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, nil
-	}
-
-	// When the Parca configuration was updated, we can update the Parca configuration secret to include the new scrape
-	// configuration.
-	finalConfig, err := parcascrapeconfig.GetConfig()
-	if err != nil {
-		reqLogger.Error(err, "Failed to get Parca configuration.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-	}
-
-	err = r.Update(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-			Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
-		},
-		Data: map[string][]byte{
-			"parca.yaml": finalConfig,
-		},
-	})
-	if err != nil {
-		reqLogger.Error(err, "Failed to update Parca configuration.")
-		r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-		return ctrl.Result{RequeueAfter: reconciliationInterval}, err
-	}
-
-	// Finally we add the parcaScrapeConfigFinalizer to the ParcaScrapeConfig. The finilizer is needed so that we can
-	// remove the ParcaScrapeConfig from the Parca configuration secret when the ParcaScrapeConfig is deleted.
+	// Finally we add the parcaScrapeConfigFinalizer to the ParcaScrapeConfig.
+	// The finilizer is needed so that we can remove the ParcaScrapeConfig from
+	// the Parca configuration secret when the ParcaScrapeConfig is deleted.
 	if !controllerutil.ContainsFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer) {
 		controllerutil.AddFinalizer(parcaScrapeConfig, parcaScrapeConfigFinalizer)
 		err := r.Update(ctx, parcaScrapeConfig)
 		if err != nil {
 			reqLogger.Error(err, "Failed to add finalizer.")
-			r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse, nil)
-			return ctrl.Result{RequeueAfter: reconciliationInterval}, err
+			r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdateFailed, err.Error(), metav1.ConditionFalse)
+			return ctrl.Result{}, err
 		}
 	}
 
 	reqLogger.Info("ParcaScrapeConfig updated.")
-	r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdated, "Parca Configuration was updated", metav1.ConditionTrue, podIPs)
-	return ctrl.Result{RequeueAfter: reconciliationInterval}, nil
+	r.updateConditions(ctx, parcaScrapeConfig, parcaScrapeConfigUpdated, "Parca Configuration was updated", metav1.ConditionTrue)
+	return ctrl.Result{}, nil
 }
 
-func (r *ParcaScrapeConfigReconciler) updateConditions(ctx context.Context, parcaScrapeConfig *parcav1alpha1.ParcaScrapeConfig, reason, message string, status metav1.ConditionStatus, podIPs []string) {
+func (r *ParcaScrapeConfigReconciler) updateConditions(ctx context.Context, parcaScrapeConfig *parcav1alpha1.ParcaScrapeConfig, reason, message string, status metav1.ConditionStatus) {
 	reqLogger := log.FromContext(ctx)
 
 	parcaScrapeConfig.Status.Conditions = []metav1.Condition{{
@@ -202,7 +133,6 @@ func (r *ParcaScrapeConfigReconciler) updateConditions(ctx context.Context, parc
 		Reason:             reason,
 		Message:            message,
 	}}
-	parcaScrapeConfig.Status.PodIPs = podIPs
 
 	err := r.Status().Update(ctx, parcaScrapeConfig)
 	if err != nil {
@@ -210,8 +140,9 @@ func (r *ParcaScrapeConfigReconciler) updateConditions(ctx context.Context, parc
 	}
 }
 
-// ignorePredicate is used to ignore updates to the CR status in which case metadata.Generation does not change. This is
-// required to avoid infinite reconcile loops, when add the conditions and PodIPs to the status.
+// ignorePredicate is used to ignore updates to the CR status in which case
+// metadata.Generation does not change. This is required to avoid infinite
+// reconcile loops, when add the conditions and PodIPs to the status.
 func ignorePredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {

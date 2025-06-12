@@ -6,7 +6,7 @@ import (
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
 	"github.com/ricoberger/parca-operator/controllers"
-	"github.com/ricoberger/parca-operator/controllers/parcascrapeconfig"
+	"github.com/ricoberger/parca-operator/controllers/parcaconfig"
 
 	//+kubebuilder:scaffold:imports
 
@@ -49,7 +49,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	err := parcascrapeconfig.Init()
+	err := parcaconfig.Init()
 	if err != nil {
 		setupLog.Error(err, "Failed to initialize Parca configuration.")
 		os.Exit(1)
@@ -66,16 +66,17 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "parcaoperator.ricoberger.de",
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
+		// LeaderElectionReleaseOnCancel defines if the leader should step down
+		// voluntarily when the Manager ends. This requires the binary to
+		// immediately end when the Manager is stopped, otherwise, this setting
+		// is unsafe. Setting this significantly speeds up voluntary leader
+		// transitions as the new leader don't have to wait LeaseDuration time
+		// first.
 		//
 		// In the default scaffold provided, the program ends immediately after
 		// the manager stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
+		// if you are doing or is intended to do any operation such as perform
+		// cleanups after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {

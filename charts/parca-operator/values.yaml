@@ -12,7 +12,8 @@ image:
 ## ghcr.io/ricoberger/parca-operator image from a private registry.
 ## See: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 ##
-imagePullSecrets: []
+imagePullSecrets:
+  []
   # - name: regcred
 
 ## The number of Pods, which are created by the Deployment.
@@ -24,14 +25,16 @@ replicaCount: 1
 ## corresponding "securityContext" field.
 ## See: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
 ##
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # fsGroup: 2000
 
 ## Specify security settings for the Container. They override settings made at the Pod level via the
 ## "podSecurityContext" when there is overlap.
 ## See: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
 ##
-securityContext: {}
+securityContext:
+  {}
   # capabilities:
   #   drop:
   #   - ALL
@@ -44,7 +47,8 @@ securityContext: {}
 ## specify resources, uncomment the following lines, adjust them as necessary, and remove the curly braces after
 ## 'resources:'.
 ##
-resources: {}
+resources:
+  {}
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
@@ -70,7 +74,8 @@ affinity: {}
 ## Topology spread constraints rely on node labels to identify the topology domain(s) that each Node is in.
 ## See: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
 ##
-topologySpreadConstraints: []
+topologySpreadConstraints:
+  []
   # - maxSkew: 1
   #   topologyKey: topology.kubernetes.io/zone
   #   whenUnsatisfiable: DoNotSchedule
@@ -81,7 +86,8 @@ topologySpreadConstraints: []
 ## Specify additional volumes for the Deployment.
 ## See: https://kubernetes.io/docs/concepts/storage/volumes/
 ##
-volumes: []
+volumes:
+  []
   ## For example this can be used to mount an existing Parca configration which is used as the base configuration for the
   ## Parca Operator.
   ##
@@ -92,14 +98,16 @@ volumes: []
 ## Specify additional volumeMounts for the container.
 ## See: https://kubernetes.io/docs/concepts/storage/volumes/
 ##
-volumeMounts: []
+volumeMounts:
+  []
   # - name: parca
   #   mountPath: /etc/parca
 
 ## Specify additional arguments for the container.
 ## See: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
 ##
-args: []
+args:
+  []
   ## For example the following can be used to set the log format and log level for the Parca Operator.
   ##
   # - -zap-encoder json
@@ -112,8 +120,6 @@ env:
   ## The following environment variables are required for the Parca Operator to read the base configration and to create
   ## the final configration for Parca:
   ##
-  - name: PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL
-    value: 5m
   - name: PARCA_SCRAPECONFIG_BASE_CONFIG
     value: /etc/parca/parca.yaml
   - name: PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME

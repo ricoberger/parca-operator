@@ -26,11 +26,6 @@ helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-oper
 Make sure that you set the following environment variables for the Parca
 Operator:
 
-- `PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL`: The reconciliation interval for
-  the `ParcaScrapeConfig` controller. If this value is not set the
-  `ParcaScrapeConfig` CRs will be reconciled every 5 minutes. This must be a
-  value which can be parsed via the
-  [`ParseDuration`](https://pkg.go.dev/time#ParseDuration) function.
 - `PARCA_SCRAPECONFIG_BASE_CONFIG`: The path to the configration file for Parca.
   This file is used as base for the generated Parca configration and should
   contain you `object_storage` configuration.
@@ -52,32 +47,39 @@ metadata:
   name:
   namespace:
 spec:
-  # selector is the selector for the Pods which should be scraped by Parca.
+  # Selector is the selector for the Pods which should be scraped by Parca.
   selector:
     matchLabels:
     matchExpressions:
-  # port is the port of the targets which is used to expose the HTTP endpoints.
-  port:
-  # scrapeConfig is the scrape configuration as it can be set in the Parca configuration.
+  # ScrapeConfig is the scrape configuration as it can be set in the Parca
+  # configuration.
   scrapeConfig:
-    # job_name is the name of the section in the configurtion. If no job_name is provided, it will be automatically
-    # generated based on the name and namespace of the CR: "namespace.name"
-    job_name:
-    # params is a set of query parameters with which the target is scraped.
+    # Job is the job name of the section in the configurtion. If no job name is
+    # provided, it will be automatically generated based on the name and
+    # namespace of the CR: "namespace/name"
+    job:
+    # Port is the name of the port of the Pods which is used to expose the
+    # profiling endpoints.
+    port:
+    # PortNumber is the number of the port which is used to expose the
+    # profiling endpoints. This can be used instead of the port field. If the
+    # port is not named.
+    portNumber:
+    # Params is a set of query parameters with which the target is scraped.
     params:
-    # scrape_interval defines how frequently to scrape the targets of this scrape config.
-    scrape_interval:
-    # scrape_timeout defines the timeout for scraping targets of this config.
-    scrape_timeout:
-    # schema sets the URL scheme with which to fetch metrics from targets.
+    # Interval defines how frequently to scrape the targets of this scrape
+    # config.
+    interval:
+    # Timeout defines the timeout for scraping targets of this config.
+    timeout:
+    # Schema sets the URL scheme with which to fetch metrics from targets.
     scheme:
-    # normalized_addresses can be set to true if the addresses returned by the endpoints have already been normalized.
-    normalized_addresses:
-    # profiling_config defines the profiling config for the targets, see https://www.parca.dev/docs/ingestion#pull-based
-    # for more information.
+    # ProfilingConfig defines the profiling config for the targets, see
+    # https://www.parca.dev/docs/ingestion#pull-based for more information.
     profiling_config:
-    # relabel_configs allows dynamic rewriting of the label set for the targets. See
-    # https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config for more information.
+    # RelabelConfigs allows dynamic rewriting of the label set for the targets,
+    # see https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+    # for more information.
     relabel_configs:
 ```
 
@@ -94,10 +96,15 @@ spec:
   selector:
     matchLabels:
       app: parca-server
-  port: 7070
   scrapeConfig:
-    scrape_interval: 45s
-    scrape_timeout: 60s
+    port: grpc
+    interval: 45s
+    timeout: 60s
+    profilingConfig:
+      pprofConfig:
+        fgprof:
+          enabled: true
+          path: /debug/pprof/fgprof
 ```
 
 </details>
@@ -131,7 +138,6 @@ Deploy the CRD and run the operator locally with the default Kubernetes config
 file present at `$HOME/.kube/config`:
 
 ```sh
-export PARCA_SCRAPECONFIG_RECONCILIATION_INTERVAL=1m
 export PARCA_SCRAPECONFIG_BASE_CONFIG=parca.yaml
 export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME=parca-generated
 export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE=parca

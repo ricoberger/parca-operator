@@ -60,59 +60,85 @@ spec:
           spec:
             description: ParcaScrapeConfigSpec defines the desired state of ParcaScrapeConfig
             properties:
-              port:
-                description: port is the port of the targets which is used to expose
-                  the HTTP endpoints.
-                format: int32
-                type: integer
               scrapeConfig:
-                description: scrapeConfig is the scrape configuration as it can be
-                  set in the Parca configuration.
+                description: |-
+                  ScrapeConfig is the scrape configuration as it can be set in the Parca
+                  configuration.
                 properties:
-                  job_name:
+                  interval:
                     description: |-
-                      job_name is the name of the section in the configurtion. If no job_name is provided, it will be automatically
-                      generated based on the name and namespace of the CR: "namespace.name"
+                      Interval defines how frequently to scrape the targets of this scrape
+                      config.
+                    pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                     type: string
-                  normalized_addresses:
-                    description: normalized_addresses can be set to true if the addresses
-                      returned by the endpoints have already been normalized.
-                    type: boolean
+                  job:
+                    description: |-
+                      Job is the job name of the section in the configurtion. If no job name
+                      is provided, it will be automatically generated based on the name and
+                      namespace of the CR: "namespace/name"
+                    type: string
                   params:
                     additionalProperties:
                       items:
                         type: string
                       type: array
-                    description: params is a set of query parameters with which the
+                    description: Params is a set of query parameters with which the
                       target is scraped.
                     type: object
-                  profiling_config:
+                  port:
                     description: |-
-                      profiling_config defines the profiling config for the targets, see
+                      Port is the name of the port of the Pods which is used to expose the
+                      profiling endpoints.
+                    type: string
+                  portNumber:
+                    description: |-
+                      PortNumber is the number of the port which is used to expose the
+                      profiling endpoints. This can be used instead of the port field. If the
+                      port is not named.
+                    format: int64
+                    type: integer
+                  profilingConfig:
+                    description: |-
+                      ProfilingConfig defines the profiling config for the targets, see
                       https://www.parca.dev/docs/ingestion#pull-based for more information.
                     properties:
-                      path_prefix:
+                      pathPrefix:
                         type: string
-                      pprof_config:
+                      pprofConfig:
                         additionalProperties:
                           properties:
                             delta:
                               type: boolean
                             enabled:
                               type: boolean
+                            keepSampleType:
+                              items:
+                                properties:
+                                  type:
+                                    type: string
+                                  unit:
+                                    type: string
+                                type: object
+                              type: array
                             path:
                               type: string
+                            seconds:
+                              type: integer
                           type: object
                         type: object
                     type: object
-                  relabel_configs:
+                  relabelConfigs:
                     description: |-
-                      relabel_configs allows dynamic rewriting of the label set for the targets. See
-                      https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config for more information.
+                      RelabelConfigs allows dynamic rewriting of the label set for the targets,
+                      see https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      for more information.
                     items:
                       description: |-
-                        RelabelConfig allows dynamic rewriting of the label set for targets, alerts, scraped samples and remote write
-                        samples.
+                        RelabelConfig allows dynamic rewriting of the label set for targets, alerts,
+                        scraped samples and remote write samples.
+
+
+                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                       properties:
                         action:
                           default: replace
@@ -163,7 +189,8 @@ spec:
                           type: string
                         replacement:
                           description: |-
-                            Replacement value against which a Replace action is performed if the regular expression matches.
+                            Replacement value against which a Replace action is performed if the
+                            regular expression matches.
 
 
                             Regex capture groups are available.
@@ -172,23 +199,25 @@ spec:
                           description: Separator is the string between concatenated
                             SourceLabels.
                           type: string
-                        source_labels:
+                        sourceLabels:
                           description: |-
-                            The source labels select values from existing labels. Their content is concatenated using the configured
-                            Separator and matched against the configured regular expression.
+                            The source labels select values from existing labels. Their content is
+                            concatenated using the configured Separator and matched against the
+                            configured regular expression.
                           items:
-                            description: LabelName is a valid Prometheus label name
-                              which may only contain ASCII letters, numbers, as well
-                              as underscores.
+                            description: |-
+                              LabelName is a valid Prometheus label name which may only contain ASCII
+                              letters, numbers, as well as underscores.
                             pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
                             type: string
                           type: array
-                        target_label:
+                        targetLabel:
                           description: |-
                             Label to which the resulting string is written in a replacement.
 
 
-                            It is mandatory for `Replace`, `HashMod`, `Lowercase`, `Uppercase`, `KeepEqual` and `DropEqual` actions.
+                            It is mandatory for `Replace`, `HashMod`, `Lowercase`, `Uppercase`,
+                            `KeepEqual` and `DropEqual` actions.
 
 
                             Regex capture groups are available.
@@ -196,35 +225,17 @@ spec:
                       type: object
                     type: array
                   scheme:
-                    description: schema sets the URL scheme with which to fetch metrics
+                    description: Schema sets the URL scheme with which to fetch metrics
                       from targets.
                     type: string
-                  scrape_interval:
-                    description: scrape_interval defines how frequently to scrape
-                      the targets of this scrape config.
-                    pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
-                    type: string
-                  scrape_timeout:
-                    description: scrape_timeout defines the timeout for scraping targets
+                  timeout:
+                    description: Timeout defines the timeout for scraping targets
                       of this config.
                     pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
                     type: string
-                  static_configs:
-                    items:
-                      properties:
-                        labels:
-                          additionalProperties:
-                            type: string
-                          type: object
-                        targets:
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    type: array
                 type: object
               selector:
-                description: selector is the selector for the Pods which should be
+                description: Selector is the selector for the Pods which should be
                   scraped by Parca.
                 properties:
                   matchExpressions:
@@ -344,10 +355,6 @@ spec:
                   - status
                   - type
                   type: object
-                type: array
-              podIPs:
-                items:
-                  type: string
                 type: array
             type: object
         type: object
