@@ -88,8 +88,8 @@ topologySpreadConstraints:
 ##
 volumes:
   []
-  ## For example this can be used to mount an existing Parca configration which is used as the base configuration for the
-  ## Parca Operator.
+  ## For example this can be used to mount an existing Parca configration which is used as the source configuration for
+  ## the Parca Operator.
   ##
   # - name: parca
   #   configMap:
@@ -117,14 +117,14 @@ args:
 ## See: https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
 ##
 env:
-  ## The following environment variables are required for the Parca Operator to read the base configration and to create
-  ## the final configration for Parca:
+  ## The following environment variables are required for the Parca Operator to read the source configration and to
+  ## create the target configration for Parca:
   ##
-  - name: PARCA_SCRAPECONFIG_BASE_CONFIG
+  - name: PARCA_CONFIG_SOURCE
     value: /etc/parca/parca.yaml
-  - name: PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME
+  - name: PARCA_CONFIG_TARGET_NAME
     value: parca-generated
-  - name: PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE
+  - name: PARCA_CONFIG_TARGET_NAMESPACE
     value: parca
 
 ## Specify additional labels and annotations for the created Pods.
