@@ -27,15 +27,15 @@ helm upgrade --install parca-operator oci://ghcr.io/ricoberger/charts/parca-oper
 Make sure that you set the following environment variables for the Parca
 Operator:
 
-- `PARCA_SCRAPECONFIG_BASE_CONFIG`: The path to the configration file for Parca.
-  This file is used as base for the generated Parca configration and should
-  contain you `object_storage` configuration.
-- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME`: The name of secret which should be
-  generated. The secret contains a `parca.yaml` key with the generated
-  configuration for Parca.
-- `PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE`: The namespace of secret which
-  should be generated. The secret contains a `parca.yaml` key with the generated
-  configuration for Parca.
+- `PARCA_CONFIG_SOURCE`: The path to the configration file for Parca. This file
+  is used as source for the generated Parca configration and should contain the
+  `object_storage` configuration.
+- `PARCA_CONFIG_TARGET_NAME` and `PARCA_CONFIG_TARGET_NAMESPACE`: The name and
+  namespace of secret which should be generated. The secret contains a
+  `parca.yaml` key with the generated configuration for Parca. The generated
+  configuration file contains the content of the source configuration and the
+  configuration for all scrape configuration created via a `ParcaScrapeConfig`
+  resource.
 
 ## API Reference
 
@@ -139,9 +139,9 @@ Deploy the CRD and run the operator locally with the default Kubernetes config
 file present at `$HOME/.kube/config`:
 
 ```sh
-export PARCA_SCRAPECONFIG_BASE_CONFIG=parca.yaml
-export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME=parca-generated
-export PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE=parca
+export PARCA_CONFIG_SOURCE=parca.yaml
+export PARCA_CONFIG_TARGET_NAME=parca-generated
+export PARCA_CONFIG_TARGET_NAMESPACE=parca
 
 make run
 ```

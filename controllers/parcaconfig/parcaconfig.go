@@ -1,7 +1,7 @@
-// Package parcaconfig manages the configuration of Parca. It works based on a
-// user provided base configuration and generates a final config, which can then
+// Package parcaconfig manages the configuration of Parca. It works sourced on a
+// user provided source configuration and generates a target config, which can then
 // be used by the Parca Server. It dynamically adds, updates and removes scrape
-// targets based on the ParcaScrapeConfig CRs.
+// targets sourced on the ParcaScrapeConfig CRs.
 package parcaconfig
 
 import (
@@ -29,8 +29,8 @@ import (
 
 var (
 	kubeClient         client.Client
-	finalConfigLock    sync.RWMutex
-	finalConfig        CustomParcaConfig
+	targetConfigLock   sync.RWMutex
+	targetConfig       CustomParcaConfig
 	invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 )
 
@@ -72,28 +72,28 @@ func sanitizeLabelName(name string) string {
 // reads all environment variables starting with "PARCA_SCRAPECONFIG_" and uses
 // them to configure the package.
 func Init() error {
-	finalConfigLock.Lock()
-	defer finalConfigLock.Unlock()
+	targetConfigLock.Lock()
+	defer targetConfigLock.Unlock()
 
-	var baseConfig CustomParcaConfig
+	var sourceConfig CustomParcaConfig
 
-	// Read the "PARCA_SCRAPECONFIG_BASE_CONFIG" environment variable. This
-	// variable must point to a file which contains the base configuration for
+	// Read the "PARCA_CONFIG_SOURCE" environment variable. This
+	// variable must point to a file which contains the source configuration for
 	// Parca. After the file was read we expand all environment variables in the
-	// file. Then we unmarshal the YAML content into the "baseConfig" variable.
-	baseConfigContent, err := os.ReadFile(os.Getenv("PARCA_SCRAPECONFIG_BASE_CONFIG"))
+	// file. Then we unmarshal the YAML content into the "sourceConfig" variable.
+	sourceConfigContent, err := os.ReadFile(os.Getenv("PARCA_CONFIG_SOURCE"))
 	if err != nil {
 		return err
 	}
 
-	baseConfigContent = []byte(expandEnv(string(baseConfigContent)))
-	if err := yaml.Unmarshal(baseConfigContent, &baseConfig); err != nil {
+	sourceConfigContent = []byte(expandEnv(string(sourceConfigContent)))
+	if err := yaml.Unmarshal(sourceConfigContent, &sourceConfig); err != nil {
 		return err
 	}
 
-	// Create a new Kubernetes client "c" which is used to interact with the
-	// Kubernetes API. This is needed because, we might have an existing final
-	// configuration which we need to update.
+	// Create a new Kubernetes client which is used to interact with the
+	// Kubernetes API. This is needed because, we create / update the target
+	// configuration outside of the controller logic.
 	restConfig, err := config.GetConfig()
 	if err != nil {
 		return err
@@ -105,22 +105,23 @@ func Init() error {
 	}
 	kubeClient = c
 
-	// Read the existing final configuration from the Kubernetes API. If there
-	// is no existing final configuration we use the base configuration as the
-	// final configuration and create a new Kubernetes Secret with the content
-	// of the base configuration.
+	// Read the existing target configuration from the Kubernetes API. If there
+	// is no existing target configuration we use the source configuration as the
+	// target configuration and create a new Kubernetes Secret with the content
+	// of the source configuration.
 	existingConfigSecret := &corev1.Secret{}
-	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"), Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE")}, existingConfigSecret)
+
+	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: os.Getenv("PARCA_CONFIG_TARGET_NAME"), Namespace: os.Getenv("PARCA_CONFIG_TARGET_NAMESPACE")}, existingConfigSecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			finalConfig = baseConfig
+			targetConfig = sourceConfig
 			err := kubeClient.Create(context.Background(), &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-					Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
+					Name:      os.Getenv("PARCA_CONFIG_TARGET_NAME"),
+					Namespace: os.Getenv("PARCA_CONFIG_TARGET_NAMESPACE"),
 				},
 				Data: map[string][]byte{
-					"parca.yaml": baseConfigContent,
+					"parca.yaml": sourceConfigContent,
 				},
 			})
 			if err != nil {
@@ -132,32 +133,32 @@ func Init() error {
 		return err
 	}
 
-	// If there is an existing final configuration we unmarshal the content of
-	// the "parca.yaml" key into the "finalConfig" variable. Then we apply all
-	// changes from the base configuration to the final configuration and update
+	// If there is an existing target configuration we unmarshal the content of
+	// the "parca.yaml" key into the "targetConfig" variable. Then we apply all
+	// changes from the source configuration to the target configuration and update
 	// the existing Kubernetes Secret with the new content.
-	if err := yaml.Unmarshal(existingConfigSecret.Data["parca.yaml"], &finalConfig); err != nil {
+	if err := yaml.Unmarshal(existingConfigSecret.Data["parca.yaml"], &targetConfig); err != nil {
 		return err
 	}
 
 	// TODO: Currently we only replace the object storage configuration, which
-	// means that the scrape_configs from the base configuration are only
+	// means that the scrape_configs from the source configuration are only
 	// applied the first time. We should find a way to also update the
 	// scrape_configs.
-	finalConfig.ObjectStorage = baseConfig.ObjectStorage
+	targetConfig.ObjectStorage = sourceConfig.ObjectStorage
 
-	finalbaseConfigContent, err := yaml.Marshal(finalConfig)
+	targetConfigContent, err := yaml.Marshal(targetConfig)
 	if err != nil {
 		return err
 	}
 
 	err = kubeClient.Update(context.Background(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-			Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
+			Name:      os.Getenv("PARCA_CONFIG_TARGET_NAME"),
+			Namespace: os.Getenv("PARCA_CONFIG_TARGET_NAMESPACE"),
 		},
 		Data: map[string][]byte{
-			"parca.yaml": finalbaseConfigContent,
+			"parca.yaml": targetConfigContent,
 		},
 	})
 	if err != nil {
@@ -170,8 +171,8 @@ func Init() error {
 // UpdateScrapeConfig adds or updates a scrape configuration for the provided
 // ParcaScrapeConfig.
 func UpdateScrapeConfig(ctx context.Context, scrapeConfig *parcav1alpha1.ParcaScrapeConfig) error {
-	finalConfigLock.Lock()
-	defer finalConfigLock.Unlock()
+	targetConfigLock.Lock()
+	defer targetConfigLock.Unlock()
 
 	// Parse the scrape interval and timeout from the ParcaScrapeConfig. Which
 	// must be a "model.Duration" type. If the parsing fails we return an error.
@@ -356,35 +357,35 @@ func UpdateScrapeConfig(ctx context.Context, scrapeConfig *parcav1alpha1.ParcaSc
 		}},
 	}
 
-	finalConfigIndex := -1
+	targetConfigIndex := -1
 
-	for i := 0; i < len(finalConfig.ScrapeConfigs); i++ {
-		if finalConfig.ScrapeConfigs[i].ScrapeConfig.JobName == fmt.Sprintf("%s/%s", scrapeConfig.Namespace, scrapeConfig.Name) {
-			finalConfigIndex = i
+	for i := 0; i < len(targetConfig.ScrapeConfigs); i++ {
+		if targetConfig.ScrapeConfigs[i].ScrapeConfig.JobName == fmt.Sprintf("%s/%s", scrapeConfig.Namespace, scrapeConfig.Name) {
+			targetConfigIndex = i
 		}
 	}
 
-	if finalConfigIndex != -1 {
-		finalConfig.ScrapeConfigs[finalConfigIndex] = &parcaScrapeConfig
+	if targetConfigIndex != -1 {
+		targetConfig.ScrapeConfigs[targetConfigIndex] = &parcaScrapeConfig
 	} else {
-		finalConfig.ScrapeConfigs = append(finalConfig.ScrapeConfigs, &parcaScrapeConfig)
+		targetConfig.ScrapeConfigs = append(targetConfig.ScrapeConfigs, &parcaScrapeConfig)
 	}
 
 	// Update the Kubernetes secret with the new value of our configuration.
 	// Parca automatically detects the changed configration and will reload it.
 	// Afterwards the added / update targets are scraped by Parca.
-	finalbaseConfigContent, err := yaml.Marshal(finalConfig)
+	targetConfigContent, err := yaml.Marshal(targetConfig)
 	if err != nil {
 		return err
 	}
 
 	err = kubeClient.Update(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-			Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
+			Name:      os.Getenv("PARCA_CONFIG_TARGET_NAME"),
+			Namespace: os.Getenv("PARCA_CONFIG_TARGET_NAMESPACE"),
 		},
 		Data: map[string][]byte{
-			"parca.yaml": finalbaseConfigContent,
+			"parca.yaml": targetConfigContent,
 		},
 	})
 	if err != nil {
@@ -400,32 +401,32 @@ func UpdateScrapeConfig(ctx context.Context, scrapeConfig *parcav1alpha1.ParcaSc
 // such a job we return an error. Otherwise we update the Parca configuration in
 // the Kubernetes secret.
 func DeleteScrapeConfig(ctx context.Context, scrapeConfig parcav1alpha1.ParcaScrapeConfig) error {
-	finalConfigLock.Lock()
-	defer finalConfigLock.Unlock()
+	targetConfigLock.Lock()
+	defer targetConfigLock.Unlock()
 
-	finalConfigIndex := -1
+	targetConfigIndex := -1
 
-	for i := 0; i < len(finalConfig.ScrapeConfigs); i++ {
-		if finalConfig.ScrapeConfigs[i].ScrapeConfig.JobName == fmt.Sprintf("%s/%s", scrapeConfig.Namespace, scrapeConfig.Name) {
-			finalConfigIndex = i
+	for i := 0; i < len(targetConfig.ScrapeConfigs); i++ {
+		if targetConfig.ScrapeConfigs[i].ScrapeConfig.JobName == fmt.Sprintf("%s/%s", scrapeConfig.Namespace, scrapeConfig.Name) {
+			targetConfigIndex = i
 		}
 	}
 
-	if finalConfigIndex != -1 {
-		finalConfig.ScrapeConfigs = append(finalConfig.ScrapeConfigs[:finalConfigIndex], finalConfig.ScrapeConfigs[finalConfigIndex+1:]...)
+	if targetConfigIndex != -1 {
+		targetConfig.ScrapeConfigs = append(targetConfig.ScrapeConfigs[:targetConfigIndex], targetConfig.ScrapeConfigs[targetConfigIndex+1:]...)
 
-		finalbaseConfigContent, err := yaml.Marshal(finalConfig)
+		targetConfigContent, err := yaml.Marshal(targetConfig)
 		if err != nil {
 			return err
 		}
 
 		err = kubeClient.Update(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAME"),
-				Namespace: os.Getenv("PARCA_SCRAPECONFIG_FINAL_CONFIG_NAMESPACE"),
+				Name:      os.Getenv("PARCA_CONFIG_TARGET_NAME"),
+				Namespace: os.Getenv("PARCA_CONFIG_TARGET_NAMESPACE"),
 			},
 			Data: map[string][]byte{
-				"parca.yaml": finalbaseConfigContent,
+				"parca.yaml": targetConfigContent,
 			},
 		})
 		if err != nil {
