@@ -1,0 +1,5 @@
+object_storage:
+  bucket:
+    type: "FILESYSTEM"
+    config:
+      directory: "./tmp"

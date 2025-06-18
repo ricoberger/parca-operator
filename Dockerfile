@@ -3,10 +3,10 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
 RUN go mod download
-COPY main.go main.go
+COPY cmd/ cmd/
 COPY api/ api/
-COPY controllers/ controllers/
-RUN CGO_ENABLED=0 go build -a -o manager main.go
+COPY internal/ internal/
+RUN CGO_ENABLED=0 go build -a -o manager cmd/main.go
 
 FROM alpine:3.22.0
 RUN apk update && apk add --no-cache ca-certificates

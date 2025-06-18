@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 var (
@@ -71,7 +70,9 @@ func sanitizeLabelName(name string) string {
 // Init is responsible to initialise the scrapeconfigs package. For that it
 // reads all environment variables starting with "PARCA_SCRAPECONFIG_" and uses
 // them to configure the package.
-func Init() error {
+func Init(kClient client.Client) error {
+	kubeClient = kClient
+
 	targetConfigLock.Lock()
 	defer targetConfigLock.Unlock()
 
@@ -90,20 +91,6 @@ func Init() error {
 	if err := yaml.Unmarshal(sourceConfigContent, &sourceConfig); err != nil {
 		return err
 	}
-
-	// Create a new Kubernetes client which is used to interact with the
-	// Kubernetes API. This is needed because, we create / update the target
-	// configuration outside of the controller logic.
-	restConfig, err := config.GetConfig()
-	if err != nil {
-		return err
-	}
-
-	c, err := client.New(restConfig, client.Options{})
-	if err != nil {
-		return err
-	}
-	kubeClient = c
 
 	// Read the existing target configuration from the Kubernetes API. If there
 	// is no existing target configuration we use the source configuration as the
