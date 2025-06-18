@@ -1,0 +1,46 @@
+object_storage:
+  bucket:
+    type: "FILESYSTEM"
+    config:
+      directory: "./tmp"
+scrape_configs:
+  - job_name: default/test
+    scrape_interval: 45s
+    scrape_timeout: 1m
+    profiling_config:
+      pprof_config:
+        fgprof:
+          enabled: true
+          path: /debug/pprof/fgprof
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_phase]
+        regex: (Failed|Succeeded)
+        action: drop
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: test
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        regex: http
+        action: keep
+      - source_labels: [__meta_kubernetes_namespace]
+        regex: null
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        regex: null
+        target_label: container
+      - source_labels: [__meta_kubernetes_pod_name]
+        regex: null
+        target_label: pod
+      - regex: null
+        target_label: job
+        replacement: default/test
+      - regex: null
+        target_label: endpoint
+        replacement: http
+    follow_redirects: false
+    enable_http2: false
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - default

@@ -1,11 +1,11 @@
-package controllers
+package controller
 
 import (
 	"context"
 	"time"
 
 	parcav1alpha1 "github.com/ricoberger/parca-operator/api/v1alpha1"
-	"github.com/ricoberger/parca-operator/controllers/parcaconfig"
+	"github.com/ricoberger/parca-operator/internal/parcaconfig"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -155,6 +155,7 @@ func ignorePredicate() predicate.Predicate {
 func (r *ParcaScrapeConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&parcav1alpha1.ParcaScrapeConfig{}).
+		Named("parcascrapeconfig").
 		WithEventFilter(ignorePredicate()).
 		Complete(r)
 }
