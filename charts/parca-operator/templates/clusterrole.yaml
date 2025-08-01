@@ -7,21 +7,10 @@ metadata:
     {{- include "parca-operator.labels" . | nindent 4 }}
 rules:
   - apiGroups:
-      - coordination.k8s.io
-    resources:
-      - leases
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
       - ""
     resources:
       - configmaps
+      - secrets
     verbs:
       - create
       - delete
@@ -38,21 +27,9 @@ rules:
       - create
       - patch
   - apiGroups:
-      - ""
+      - coordination.k8s.io
     resources:
-      - pods
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - secrets
+      - leases
     verbs:
       - create
       - delete
