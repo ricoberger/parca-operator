@@ -35,7 +35,6 @@ type ParcaScrapeConfigReconciler struct {
 //+kubebuilder:rbac:groups=parca.ricoberger.de,resources=parcascrapeconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=parca.ricoberger.de,resources=parcascrapeconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=parca.ricoberger.de,resources=parcascrapeconfigs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
