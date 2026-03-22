@@ -82,6 +82,7 @@ func Init(kClient client.Client) error {
 	// variable must point to a file which contains the source configuration for
 	// Parca. After the file was read we expand all environment variables in the
 	// file. Then we unmarshal the YAML content into the "sourceConfig" variable.
+	//nolint:gosec
 	sourceConfigContent, err := os.ReadFile(os.Getenv("PARCA_CONFIG_SOURCE"))
 	if err != nil {
 		return err
