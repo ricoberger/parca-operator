@@ -3,5 +3,5 @@ apiVersion: v2
 name: parca-operator
 description: Deploy and Operator Parca
 type: application
-version: 1.2.2
+version: 1.2.3
 appVersion: v0.5.1
