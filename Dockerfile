@@ -8,7 +8,7 @@ COPY api/ api/
 COPY internal/ internal/
 RUN CGO_ENABLED=0 go build -a -o manager cmd/main.go
 
-FROM alpine:3.23.4
+FROM alpine:3.24.1
 RUN apk update && apk add --no-cache ca-certificates
 WORKDIR /
 COPY --from=builder /workspace/manager .
