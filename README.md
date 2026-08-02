@@ -1,5 +1,9 @@
 # Parca Operator
 
+> [!CAUTION]
+>
+> The Parca Operator is deprecated and will not receive any further updates.
+
 The Parca Operator can be used to deploy and operator
 [Parca](https://www.parca.dev). It can be used to deploy the
 [Parca Server](https://www.parca.dev/docs/parca) and
@@ -9,6 +13,7 @@ Operator can also be used to configure the
 Custom Resource Definitions.
 
 > [!NOTE]
+>
 > The Parca Operator is work in progress. While I plan to add support for the
 > deployment of the Parca Server and Parca Agent, these features are not
 > implemented yet.
